@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+//TODO: add exception handling for free()
+
+//IMPORTANT!!! only .string malloced
 typedef struct strArray {
     char** string;
     int capacity;
@@ -36,13 +39,20 @@ bool strArray_append(strArray *arr, char* str) {
     return true;
 }
 
-bool strArray_del(strArray *arr) {
-    for (int start = 0; start < arr->size; start++) free(arr->string[start]);
+bool strArray_destroy(strArray *arr) {
+    // no freeing string ptrs as strArray didn't allocate them
+    // for (int start = 0; start < arr->size; start++) free(arr->string[start]);
     free(arr->string);
+
     arr->string = NULL;
+    arr->capacity = 0;
+    arr->size = 0;
+
     return true;
 }
 
+//IMPORTANT!!! only .ptr to be treated as malloced
+//.string and .ptr to be NULLified
 typedef struct string {
     char* ptr; //allocated pointer
     char* string;
@@ -112,6 +122,16 @@ void string_trim(string *s) {
     string_trim_right(s);
 }
 
+bool string_destroy(string *s) {
+    free(s->ptr);
+    s->ptr = NULL;
+    s->string = NULL;
+    s->size = 0;
+    s->capacity = 0;
+
+    return true;
+}
+
 //just adds a whole bunch of '\0' in place of ' '
 //i mean why not??
 //IMPORTANT!!! there will be overlapping memory between strArray and strings
@@ -148,34 +168,30 @@ pid_t run_cmd(strArray *cmd_args) {
         perror("ERROR: Couldn't execute the command\n");
     } else if (wait(NULL) == -1) {
         fprintf(stderr, "ERROR: couldn't fork child process\n");
-    } else {
-        printf("back to parent");
     }
     return pid;
 }
 
+//TODO: remove ^C restriction
+//TODO: SHELL uses too much time to identify unavailable binaries
 int main() {
-    string s = scan_string(": ");
-    string_trim(&s);
-    strArray arr = evaluate_prompt(&s);
-    run_cmd(&arr);
-}
-
-int main2() {
     do {
         string prompt = scan_string("> ");
+        string_trim(&prompt);
         if (
-            prompt.string == NULL ||
             strcmp(prompt.string, "exit") == 0
         ) {
             printf("EXITING SHZE SHELL\n");
             return 0;
         }
-        else 
-            printf("%s\n", prompt.string);
+        else {
+            strArray arr = evaluate_prompt(&prompt);
+            run_cmd(&arr);
+            strArray_destroy(&arr);
+            string_destroy(&prompt);
+        }
 
-        free(prompt.string);
-        prompt.string = NULL;
+
     } while (1);
 
     return 1;
