@@ -106,9 +106,6 @@ int main() {
     strArray arr = strArray_new();
     strArray_append(&arr,"echo");
     strArray_append(&arr,"hello, world");
-    // for (int i = 0; i < arr.size; i++) {
-    //     printf("%s\n", arr.string[i]);
-    // }
     run_cmd(&arr);
 }
 
